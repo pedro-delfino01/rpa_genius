@@ -24,12 +24,15 @@ Coletar Dados do Genius
 *** Keywords ***
 Coletar Dados
     [Documentation]    Coleta dados de uma página web
+    ${list_xlsx}=    Create List
+    ${song_data_csv}=    Create List
+    ${song_data_xlsx}=    Create List
     Open Available Browser    https://genius.com/
     Maximize Browser Window
     ${title}=    Get Title
     Click Element When Visible    xpath=//a/span[contains(text(),'Charts')]
     Wait Until Page Contains Element    xpath=//h2[contains(text(),'Charts')]
-    WHILE    True    limit=1min    on_limit=pass
+    WHILE    True
         TRY
             # Verifica se o botão "Load More" está visível e clica nele,
             ${verify_element}=    Run Keyword And Ignore Error    Is Element Visible    xpath=//div[@id="top-songs"]//div/div[contains(text(),"Load More")]    timeout=10s
@@ -38,7 +41,6 @@ Coletar Dados
                 Click Element When Visible    xpath=//div[@id="top-songs"]//div/div[contains(text(),"Load More")]
             ELSE
                 Log    Botão "Load More" não encontrado ou não está habilitado.
-                
             END
             Scroll Element Into View    xpath=//h2[contains(text(), "Videos")]
             ${count_songs}    Get Element Count    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a
@@ -52,19 +54,17 @@ Coletar Dados
     END
     Scroll Element Into View    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]
     ${count_songs}    Get Element Count    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a
-    ${list_xlsx}=    Create List
-    ${song_data_csv}=    Create List
-    ${song_data_xlsx}=    Create List
     Log    Total de músicas coletadas: ${count_songs}
     FOR    ${index}    IN RANGE    1    ${count_songs}+1
         ${song_position}    Set Variable    ${index}
-        Scroll Element Into View    locator=xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a[${index}]
+        # Scroll Element Into View    locator=xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a[${index}]
         ${song_title}=    Get Text    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a[${index}]//h3/div[1]
         ${song_url}=    Get Element Attribute    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a[${index}]    href
         ${song_artist}=    Get Text    xpath=//div[@id="top-songs"]//div[@class="PageGridFull-sc-6a49b2f6-0 iWqdWA"]/a[${index}]/h4
         ${song_data_xlsx}    Create List    ${song_position}    ${song_title}    ${song_artist}    ${song_url}
-        Append To List    ${list_xlsx}    ${song_data_xlsx}
+        Log    ${song_data_xlsx}
         ${line_csv}    Set Variable    ${song_position}, '${song_title}', '${song_artist}', '${song_url}'
+        Append To List    ${list_xlsx}    ${song_data_xlsx}
         Append To List    ${song_data_csv}    ${line_csv}
     END
     Close Browser
@@ -86,7 +86,11 @@ Create CSV File
 Create Excel File
     [Documentation]    Cria um arquivo Excel com os dados coletados
     [Arguments]    ${data_execution}    ${song_data}
-    ${path}    Set Variable    data/songs_data_${data_execution}.xlsx
+    ${directory}    Run Keyword and Ignore Error    Directory Should Exist    path=excel
+    IF    '${directory}[0]' == 'FAIL'
+        Create Directory    path=excel
+    END
+    ${path}    Set Variable    excel/songs_data_${data_execution}.xlsx
     Create Workbook    path=${CURDIR}/excel/songs_data_${data_execution}.xlsx
     Set Cell Value    row=1    column=A    value=Position
     Set Cell Value    row=1    column=B    value=Title
